@@ -199,6 +199,9 @@ export default function App(){
   const [mv,setMv]=useState("main");
   const [allDays,setAllDays]=useState({}); 
   const [repoId,setRepoId]=useState(null);
+  const [guided,setGuided]=useState(null);
+  const [gStep,setGStep]=useState(0);
+  const [gStart,setGStart]=useState(null);
   const [calMo,setCalMo]=useState(new Date());
   const [set,setSetting]=useState({showTasks:true,breathMins:20});
 
@@ -315,9 +318,12 @@ export default function App(){
 
   async function openLog(){const d=await loadAllDays();setAllDays(d);setMv("log");}
 
+  function startGuided(steps,name){setGuided({steps,name});setGStep(0);setGStart(Date.now());setMv("guided");}
+  function doneGuided(){const mins=gStart?Math.round((Date.now()-gStart)/60000):0;appendSession("practice",{practiceName:guided?.name||"practice",durationMins:mins});setGuided(null);setGStep(0);setGStart(null);setMv("repo_item");}
+
   function wkStats(){let bm=0,sk=0,se=0,ac=0,bc=0;const now=new Date();for(let i=0;i<7;i++){const d=new Date(now);d.setDate(d.getDate()-i);const key=d.toISOString().split("T")[0];const day=allDays[key];if(!day)continue;if(day.sessions?.breath)day.sessions.breath.forEach(s=>{bm+=s.durationMins||0;});if(day.sila){sk+=(day.sila.silaS||[]).filter(s=>s==="k").length;se++;}if(day.evening?.abh)ac++;if(day.evening?.bya)bc++;}return{bm,sk:se>0?Math.round(sk/se):null,ac,bc};}
 
-  function closeMenu(){setShowMenu(false);setMv("main");setRepoId(null);}
+  function closeMenu(){setShowMenu(false);setMv("main");setRepoId(null);setGuided(null);setGStep(0);setGStart(null);}
 
   return(<>
     <style>{CSS}</style>
@@ -480,8 +486,8 @@ export default function App(){
       {showMenu&&<div className="ov" onClick={closeMenu}><div className="mod" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {mv!=="main"&&<button className="ib" style={{fontSize:"16px"}} onClick={()=>{if(mv==="repo_item"){setMv("repo");}else setMv("main");}}>←</button>}
-            <p style={{fontSize:"15px",color:"#b8860b",fontWeight:500}}>{mv==="main"?"Menu":mv==="chant"?"Daily Chant":mv==="repo"?"Knowledge Repository":mv==="repo_item"&&repoId?REPO_DATA[repoId]?.title||"Teaching":"Practice Log"}</p>
+            {mv!=="main"&&<button className="ib" style={{fontSize:"16px"}} onClick={()=>{if(mv==="guided"){setMv("repo_item");}else if(mv==="repo_item"){setMv("repo");}else setMv("main");}}>←</button>}
+            <p style={{fontSize:"15px",color:"#b8860b",fontWeight:500}}>{mv==="main"?"Menu":mv==="chant"?"Daily Chant":mv==="repo"?"Knowledge Repository":mv==="guided"?"Guided Practice":mv==="repo_item"&&repoId?REPO_DATA[repoId]?.title||"Teaching":"Practice Log"}</p>
           </div>
           <button className="ib" onClick={closeMenu}>✕</button>
         </div>
@@ -504,10 +510,20 @@ export default function App(){
           <p style={{fontSize:"12px",color:"#9a7d3a",marginTop:2}}>{item.sutta||""}</p>
         </div>)}
         </>}
-        {mv==="repo_item"&&repoId&&REPO_DATA[repoId]&&<>
+       {mv==="repo_item"&&repoId&&REPO_DATA[repoId]&&<>
           <p style={{fontSize:"12px",color:"#9a7d3a",marginBottom:8}}>{REPO_DATA[repoId].sutta}</p>
           <div style={{fontSize:"14px",color:"#4a3a1a",lineHeight:1.8,marginBottom:8,whiteSpace:"pre-line"}}>{REPO_DATA[repoId].teaching}</div>
           {REPO_DATA[repoId].steps&&<><p className="st">The Practice</p>{REPO_DATA[repoId].steps.map((s,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><span style={{fontSize:"13px",color:"#b8860b",fontWeight:500,flexShrink:0}}>{i+1}.</span><p style={{fontSize:"13px",color:"#4a3a1a",lineHeight:1.7}}>{s}</p></div>)}</>}
+          {REPO_DATA[repoId].guided&&<button className="btn pri" style={{marginTop:8}} onClick={()=>startGuided(REPO_DATA[repoId].guided,REPO_DATA[repoId].title||repoId)}>Guide me through this now ›</button>}
+        </>}
+        {mv==="guided"&&guided&&<>
+          <p style={{fontSize:"12px",color:"#9a7d3a",fontStyle:"italic",marginBottom:8}}>{guided.name}</p>
+          <p style={{fontSize:"12px",color:"#b8a06a",marginBottom:8}}>Step {gStep+1} of {guided.steps.length} — {guided.steps[gStep].title}</p>
+          <div style={{background:"#f8f0d8",borderRadius:10,padding:14,marginBottom:10,fontSize:"14px",color:"#4a3a1a",lineHeight:1.8,whiteSpace:"pre-line"}}>{guided.steps[gStep].instruction}</div>
+          <div className="bwrap" style={{marginBottom:12}}><div className="bar" style={{width:`${((gStep+1)/guided.steps.length)*100}%`}}/></div>
+        {gStep<guided.steps.length-1
+          ?<button className="btn pri" onClick={()=>{playBowl();setGStep(s=>s+1);}}>I have done this ›</button>
+          :<><div className="ibox">Notice the quality of the mind. This turning toward — however small — is the path itself.</div><button className="btn pri" style={{marginTop:8}} onClick={doneGuided}>Complete practice ✓</button></>}
         </>}
         {mv==="log"&&<>
           {(()=>{const s=wkStats();return(<><p className="st">This week</p><div className="card">{[["Breath watched",s.bm>0?`${s.bm} min`:"none yet"],["Sīla avg",s.sk!==null?`${s.sk}/5`:"—"],["Abhijjhā arose",`${s.ac} days`],["Byāpāda arose",`${s.bc} days`]].map(([l,v])=><div className="strow" key={l}><span>{l}</span><span className="sv">{v}</span></div>)}</div></>);})()}
