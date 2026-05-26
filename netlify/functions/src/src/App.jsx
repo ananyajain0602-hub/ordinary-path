@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
+import { REPO_DATA } from './repoData.js';
+
 const GOLD = "#b8860b", GL = "#f5e9c8", PARCH = "#fdf6e3";
 const USER = "Ananya";
 
