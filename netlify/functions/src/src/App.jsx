@@ -197,7 +197,8 @@ export default function App(){
   const [showSet,setShowSet]=useState(false);
   const [showMenu,setShowMenu]=useState(false);
   const [mv,setMv]=useState("main");
-  const [allDays,setAllDays]=useState({});
+  const [allDays,setAllDays]=useState({}); 
+  const [repoId,setRepoId]=useState(null);
   const [calMo,setCalMo]=useState(new Date());
   const [set,setSetting]=useState({showTasks:true,breathMins:20});
 
@@ -316,7 +317,7 @@ export default function App(){
 
   function wkStats(){let bm=0,sk=0,se=0,ac=0,bc=0;const now=new Date();for(let i=0;i<7;i++){const d=new Date(now);d.setDate(d.getDate()-i);const key=d.toISOString().split("T")[0];const day=allDays[key];if(!day)continue;if(day.sessions?.breath)day.sessions.breath.forEach(s=>{bm+=s.durationMins||0;});if(day.sila){sk+=(day.sila.silaS||[]).filter(s=>s==="k").length;se++;}if(day.evening?.abh)ac++;if(day.evening?.bya)bc++;}return{bm,sk:se>0?Math.round(sk/se):null,ac,bc};}
 
-  function closeMenu(){setShowMenu(false);setMv("main");}
+  function closeMenu(){setShowMenu(false);setMv("main");setRepoId(null);}
 
   return(<>
     <style>{CSS}</style>
@@ -479,14 +480,15 @@ export default function App(){
       {showMenu&&<div className="ov" onClick={closeMenu}><div className="mod" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {mv!=="main"&&<button className="ib" style={{fontSize:"16px"}} onClick={()=>setMv("main")}>←</button>}
-            <p style={{fontSize:"15px",color:"#b8860b",fontWeight:500}}>{mv==="main"?"Menu":mv==="chant"?"Daily Chant":"Practice Log"}</p>
+            {mv!=="main"&&<button className="ib" style={{fontSize:"16px"}} onClick={()=>{if(mv==="repo_item"){setMv("repo");}else setMv("main");}}>←</button>}
+            <p style={{fontSize:"15px",color:"#b8860b",fontWeight:500}}>{mv==="main"?"Menu":mv==="chant"?"Daily Chant":mv==="repo"?"Knowledge Repository":mv==="repo_item"&&repoId?REPO_DATA[repoId]?.title||"Teaching":"Practice Log"}</p>
           </div>
           <button className="ib" onClick={closeMenu}>✕</button>
         </div>
         {mv==="main"&&<>
           <button className="btn" onClick={()=>setMv("chant")}>🪷 Daily chant</button>
           <button className="btn" onClick={openLog}>📅 Practice log</button>
+          <button className="btn" onClick={()=>setMv("repo")}>📚 Knowledge repository</button>
         </>}
         {mv==="chant"&&<>
           <p style={{fontSize:"12px",color:"#9a7d3a",textAlign:"center",marginBottom:8}}>Recite three times daily</p>
@@ -494,6 +496,18 @@ export default function App(){
           <p className="st">Line by line</p>
           {CHANT_LINES.map(([p,e])=><div key={p} style={{padding:"7px 0",borderBottom:"1px solid #e8ddb8"}}><p style={{fontSize:"13px",color:"#4a3a1a",fontStyle:"italic"}}>{p}</p><p style={{fontSize:"12px",color:"#8a7a5a",marginTop:2}}>{e}</p></div>)}
           <button className="btn sm" style={{marginTop:10,textAlign:"center"}} onClick={playGong}>🔔 Sound gong</button>
+        </>}
+       {mv==="repo"&&<>
+          <p style={{fontSize:"12px",color:"#8a7a5a",fontStyle:"italic",marginBottom:10}}>Tap any topic to read the teaching.</p>
+          {Object.entries(REPO_DATA).map(([id,item])=><div key={id} style={{background:"#fffdf5",border:"1px solid #e0c97a",borderRadius:10,padding:"11px 13px",marginBottom:8,cursor:"pointer"}} onClick={()=>{setRepoId(id);setMv("repo_item");}}>
+          <p style={{fontSize:"14px",color:"#b8860b",fontWeight:500}}>{item.title||id}</p>
+          <p style={{fontSize:"12px",color:"#9a7d3a",marginTop:2}}>{item.sutta||""}</p>
+        </div>)}
+        </>}
+        {mv==="repo_item"&&repoId&&REPO_DATA[repoId]&&<>
+          <p style={{fontSize:"12px",color:"#9a7d3a",marginBottom:8}}>{REPO_DATA[repoId].sutta}</p>
+          <div style={{fontSize:"14px",color:"#4a3a1a",lineHeight:1.8,marginBottom:8,whiteSpace:"pre-line"}}>{REPO_DATA[repoId].teaching}</div>
+          {REPO_DATA[repoId].steps&&<><p className="st">The Practice</p>{REPO_DATA[repoId].steps.map((s,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><span style={{fontSize:"13px",color:"#b8860b",fontWeight:500,flexShrink:0}}>{i+1}.</span><p style={{fontSize:"13px",color:"#4a3a1a",lineHeight:1.7}}>{s}</p></div>)}</>}
         </>}
         {mv==="log"&&<>
           {(()=>{const s=wkStats();return(<><p className="st">This week</p><div className="card">{[["Breath watched",s.bm>0?`${s.bm} min`:"none yet"],["Sīla avg",s.sk!==null?`${s.sk}/5`:"—"],["Abhijjhā arose",`${s.ac} days`],["Byāpāda arose",`${s.bc} days`]].map(([l,v])=><div className="strow" key={l}><span>{l}</span><span className="sv">{v}</span></div>)}</div></>);})()}
